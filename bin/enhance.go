@@ -15,7 +15,10 @@ import (
 
 var (
   filename = flag.String("image", "", "Image to process")
+  energy_filename = flag.String("energy", "", "Filename for energy image")
   output_filename = flag.String("output", "", "Image to process")
+  xscale = flag.Float64("xscale", 1., "Horizontal scale factor")
+  yscale = flag.Float64("yscale", 1., "Vertical scale factor")
 )
 
 func writeImage(in image.Image, path string) {
@@ -29,6 +32,7 @@ func writeImage(in image.Image, path string) {
 
 func readImage(path string) image.Image {
   file, err := os.Open(*filename)
+  if err != nil { log.Fatal(err) }
   img, _, err := image.Decode(file)
   if err != nil { log.Fatal(err) }
   return img
@@ -37,7 +41,15 @@ func readImage(path string) image.Image {
 func main() {
   flag.Parse()
   img := readImage(*filename)
-  new_size := image.Rect(0, 0, img.Bounds().Size().X - 20, img.Bounds().Size().Y)
-  carved := enhance.SeamCarve(img, new_size)
-  writeImage(carved, *output_filename)
+  if *energy_filename != "" {
+    log.Printf("Writing energy image to \"%v\"\n", *energy_filename)
+    writeImage(enhance.Energy(img), *energy_filename)
+  }
+  if *xscale < 1 && *xscale > 0 {
+    new_width := int(float64(img.Bounds().Size().X) * *xscale)
+    new_height := int(float64(img.Bounds().Size().Y) * *yscale)
+    log.Printf("Rescaling to w=%v h=%v", new_width, new_height)
+    img = enhance.SeamCarve(img, new_width, new_height)
+  }
+  writeImage(img, *output_filename)
 }
