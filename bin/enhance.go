@@ -22,7 +22,7 @@ var (
 )
 
 func writeImage(in image.Image, path string) {
-  w, err := os.OpenFile(*output_filename, os.O_RDWR | os.O_CREATE, 0664)
+  w, err := os.OpenFile(path, os.O_RDWR | os.O_CREATE, 0664)
   if err != nil { log.Fatal(err) }
   err = png.Encode(w, in)
   if err != nil { log.Fatal(err) }
