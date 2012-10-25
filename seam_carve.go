@@ -3,6 +3,7 @@ package enhance
 import (
   "image"
   "image/color"
+  "image/draw"
   "log"
 )
 
@@ -21,7 +22,7 @@ func minIndex(row []uint32) int {
 }
 
 
-func shrinkHorizontal(in image.Image, energy *image.Gray16) (image.Image, *image.Gray16) {
+func shrinkHorizontal(in *image.RGBA, energy *image.Gray16) (*image.RGBA, *image.Gray16) {
   size := in.Bounds().Size()
   if size.X < 2 { return in, energy }
   //log.Printf("shrinkHorizontal (w=%v, h=%v)\n", size.X, size.Y)
@@ -72,25 +73,26 @@ func shrinkHorizontal(in image.Image, energy *image.Gray16) (image.Image, *image
 
 
   // Execute erase script.
-  new_rect := image.Rect(0, 0, size.X - 1, size.Y)
-  new_image := image.NewRGBA(new_rect)
   for y, deleted_x := range script {
-    for x := 0; x < new_rect.Max.X; x++ {
-      src_x := x
-      if x >= deleted_x { src_x++ }
-      new_image.Set(x, y, in.At(src_x, y))
-    }
     start := energy.PixOffset(deleted_x, y)
     end := energy.PixOffset(size.X, y)
     copy(energy.Pix[start : end - 2], energy.Pix[start + 2 : end]) // 2 b/c it's 16 bit
+
+    start = in.PixOffset(deleted_x, y)
+    end = in.PixOffset(size.X, y)
+    copy(in.Pix[start : end - 4], in.Pix[start + 4 : end]) // 4 b/c it's 32 bit
   }
-  return new_image, energy
+  in.Rect.Max.X -= 1
+  return in, energy
 }
 
 func SeamCarve(in image.Image, w int, h int) image.Image {
   energy := Energy(in)
-  for in.Bounds().Size().X >= w {
-    in, energy = shrinkHorizontal(in, energy)
+  out := image.NewRGBA(in.Bounds())
+  draw.Draw(out, in.Bounds(), in, in.Bounds().Min, draw.Src)
+  for out.Bounds().Size().X >= w {
+    start := time.Now()
+    out, energy = shrinkHorizontal(out, energy)
   }
   return in
 }
