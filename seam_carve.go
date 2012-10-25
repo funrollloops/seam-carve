@@ -74,16 +74,17 @@ func shrinkHorizontal(in image.Image, energy *image.Gray16) (image.Image, *image
   // Execute erase script.
   new_rect := image.Rect(0, 0, size.X - 1, size.Y)
   new_image := image.NewRGBA(new_rect)
-  new_energy := image.NewGray16(new_rect)
   for y, deleted_x := range script {
     for x := 0; x < new_rect.Max.X; x++ {
       src_x := x
       if x >= deleted_x { src_x++ }
-      new_energy.Set(x, y, energy.At(src_x, y))
       new_image.Set(x, y, in.At(src_x, y))
     }
+    start := energy.PixOffset(deleted_x, y)
+    end := energy.PixOffset(size.X, y)
+    copy(energy.Pix[start : end - 2], energy.Pix[start + 2 : end]) // 2 b/c it's 16 bit
   }
-  return new_image, new_energy
+  return new_image, energy
 }
 
 func SeamCarve(in image.Image, w int, h int) image.Image {
