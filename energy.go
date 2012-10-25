@@ -25,7 +25,44 @@ func rgba(r, g, b, a uint32) *RGBA {
   return &RGBA{r, g, b, a}
 }
 
-func Energy(in image.Image) *image.Gray16 {
+type ImageF32 struct {
+  Data []float32
+  Stride int
+  Width int
+  Height int
+}
+
+func (i *ImageF32) Offset(x, y int) int {
+  return y * i.Stride + x
+}
+
+func (i *ImageF32) At(x, y int) float32 {
+  return i.Data[i.Offset(x,y)]
+}
+
+func (i *ImageF32) ToGray8() *image.Gray {
+  gray := image.NewGray(image.Rect(0, 0, i.Width, i.Height))
+  var max_energy float32
+  for y := 0; y < i.Height; y++ {
+    for x := 0; x < i.Width; x++ {
+      if i.At(x, y) > max_energy {
+        max_energy = i.At(x, y)
+      }
+    }
+  }
+  for y := 0; y < i.Height; y++ {
+    for x := 0; x < i.Width; x++ {
+      gray.SetGray(x, y, color.Gray{Y: uint8(i.At(x, y) * 255 / max_energy)})
+    }
+  }
+  return gray
+}
+
+func NewImageF32(w, h int) *ImageF32 {
+  return &ImageF32{Data: make([]float32, w * h), Stride: w, Width: w, Height: h}
+}
+
+func Energy(in image.Image) *ImageF32 {
   bounds := in.Bounds()
   energyAt := func(minx, maxx, miny, maxy int) float32 {
     var avgR, avgG, avgB, avgA uint32
@@ -56,22 +93,11 @@ func Energy(in image.Image) *image.Gray16 {
     return float32(math.Sqrt(variance))
   }
 
-  var max_energy float32
-  as_float := make([][]float32, bounds.Size().Y)
+  energy := NewImageF32(bounds.Size().X, bounds.Size().Y)
   for y := bounds.Min.Y + 1; y < bounds.Max.Y - 1; y++ {
-    row := make([]float32, bounds.Size().X)
-    as_float[y - bounds.Min.Y] = row
+    row := energy.Data[energy.Offset(0, y):]
     for x := bounds.Min.X + 1; x < bounds.Max.X - 1; x++ {
-      e := energyAt(x - 1, x + 1, y - 1, y + 1)
-      if e > max_energy { max_energy = e }
-      row[x - bounds.Min.X] = e
-    }
-  }
-
-  energy := image.NewGray16(bounds)
-  for y, row := range as_float {
-    for x, e := range row {
-      energy.SetGray16(x, y, color.Gray16{uint16(float32((1<<16) - 1) * e / max_energy)})
+      row[x - bounds.Min.X] = energyAt(x - 1, x + 1, y - 1, y + 1)
     }
   }
   return energy

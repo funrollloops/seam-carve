@@ -43,7 +43,7 @@ func main() {
   img := readImage(*filename)
   if *energy_filename != "" {
     log.Printf("Writing energy image to \"%v\"\n", *energy_filename)
-    writeImage(enhance.Energy(img), *energy_filename)
+    writeImage(enhance.Energy(img).ToGray8(), *energy_filename)
   }
   if *xscale < 1 && *xscale > 0 {
     new_width := int(float64(img.Bounds().Size().X) * *xscale)
