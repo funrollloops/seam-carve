@@ -26,6 +26,11 @@ func shrinkHorizontal(in *image.RGBA, energy *ImageF32) (*image.RGBA, *ImageF32)
     scores[y] = make([]Cell, size.X)
   }
 
+  setCell := func(x, y, prev int) {
+    scores[y][x].Score = scores[y - 1][prev].Score + energy.At(x, y)
+    scores[y][x].Prev = prev
+  }
+
   // Initialize first row.
   for x := 0; x < size.X; x++ {
     scores[0][x].Score = energy.At(x, 0)
@@ -33,43 +38,41 @@ func shrinkHorizontal(in *image.RGBA, energy *ImageF32) (*image.RGBA, *ImageF32)
   // Generate scores.
   for y := 1; y < size.Y; y++ {
     last := scores[y - 1]
-    current := scores[y]
     if last[0].Score < last[1].Score {
-      current[0] = Cell{last[0].Score, 0}
+      setCell(0, y, 0)
     } else {
-      current[0] = Cell{last[1].Score, 1}
+      setCell(0, y, 1)
     }
     for x := 1; x < size.X - 1; x++ {
       switch {
       case last[x-1].Score <= last[x].Score && last[x-1].Score <= last[x + 1].Score:
-        current[x].Prev = x - 1
+        setCell(x, y, x - 1)
       case last[x].Score <= last[x + 1].Score:
-        current[x].Prev = x
+        setCell(x, y, x)
       default:
-        current[x].Prev = x + 1
+        setCell(x, y, x + 1)
       }
-      current[x].Score = last[current[x].Prev].Score + energy.At(x, y)
     }
     if last[size.X - 2].Score < last[size.X - 1].Score {
-      current[size.X - 1] = Cell{last[size.X - 2].Score, size.X - 2}
+      setCell(size.X - 1, y, size.X - 2)
     } else {
-      current[size.X - 1] = Cell{last[size.X - 1].Score, size.X - 1}
+      setCell(size.X - 1, y, size.X - 1)
     }
   }
   // Generate erase script.
   script := make([]int, size.Y)
   // Infer least-cost path.
-  var deleted_x int
+  cell := &scores[size.Y - 1][0]
   for x := 1; x < size.X; x++ {
-    if scores[size.Y - 1][x].Score < scores[size.Y - 1][deleted_x].Score {
-      deleted_x = x
+    if scores[size.Y - 1][x].Score < cell.Score {
+      script[size.Y - 1] = x
+      cell = &scores[size.Y - 1][x]
     }
   }
-  for y := size.Y - 1; y > 0; y-- {
-    script[y] = deleted_x
-    deleted_x = scores[y][deleted_x].Prev
+  for y := size.Y - 2; y >= 0; y-- {
+    script[y] = cell.Prev
+    cell = &scores[y][cell.Prev]
   }
-  script[0] = deleted_x
 
   // Execute erase script.
   for y, deleted_x := range script {
