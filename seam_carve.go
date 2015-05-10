@@ -76,13 +76,18 @@ func shrinkHorizontal(in *image.RGBA, energy *ImageF32) (*image.RGBA, *ImageF32)
 
   // Execute erase script.
   for y, deleted_x := range script {
-    start := energy.Offset(deleted_x, y)
-    end := energy.Offset(size.X, y)
-    copy(energy.Data[start : end - 1], energy.Data[start + 1 : end])
-
-    start = in.PixOffset(deleted_x, y)
-    end = in.PixOffset(size.X, y)
+    start := in.PixOffset(deleted_x, y)
+    end := in.PixOffset(size.X, y)
     copy(in.Pix[start : end - 4], in.Pix[start + 4 : end]) // 4 b/c it's 32 bit
+
+    start = energy.Offset(deleted_x, y)
+    end = energy.Offset(size.X, y)
+    copy(energy.Data[start : end - 1], energy.Data[start + 1 : end])
+  }
+  for y, x := range script {
+    if x > 0 { energy.Set(x - 1, y, EnergyAt(in, x - 1, y)) }
+    energy.Set(x, y, EnergyAt(in, x, y))
+    if x < energy.Width - 1 { energy.Set(x + 1, y, EnergyAt(in, x + 1, y)) }
   }
   energy.Width -= 1
   in.Rect.Max.X -= 1
