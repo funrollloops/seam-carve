@@ -1,7 +1,7 @@
 package main
 
 import (
-  "sagarmittal.com/enhance"
+  "github.com/funrollloops/seamcarve"
 
   "flag"
   "image"
@@ -16,7 +16,7 @@ import (
 var (
   filename = flag.String("image", "", "Image to process")
   energy_filename = flag.String("energy", "", "Filename for energy image")
-  output_filename = flag.String("output", "", "Image to process")
+  output_filename = flag.String("output", "", "Filenam for output image")
   xscale = flag.Float64("xscale", 1., "Horizontal scale factor")
   yscale = flag.Float64("yscale", 1., "Vertical scale factor")
 )
@@ -43,13 +43,13 @@ func main() {
   img := readImage(*filename)
   if *energy_filename != "" {
     log.Printf("Writing energy image to \"%v\"\n", *energy_filename)
-    writeImage(enhance.Energy(img).ToGray8(), *energy_filename)
+    writeImage(seamcarve.Energy(img).ToGray8(), *energy_filename)
   }
   if *xscale < 1 && *xscale > 0 {
     new_width := int(float64(img.Bounds().Size().X) * *xscale)
     new_height := int(float64(img.Bounds().Size().Y) * *yscale)
     log.Printf("Rescaling to w=%v h=%v", new_width, new_height)
-    img = enhance.SeamCarve(img, new_width, new_height)
+    img = seamcarve.SeamCarve(img, new_width, new_height)
   }
   writeImage(img, *output_filename)
 }
